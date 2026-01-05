@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>坤时转换器 - 练习生宇宙版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+SC:wght@300;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0a0a0a;
+            font-family: 'Noto Sans SC', sans-serif;
+            overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
+        }
+        .digital-font { font-family: 'Orbitron', sans-serif; }
+        
+        /* 氛围光效 */
+        .glow {
+            box-shadow: 0 0 20px rgba(234, 179, 8, 0.3);
+        }
+        
+        /* 篮球纹理背景 */
+        .bg-pattern {
+            background-image: radial-gradient(#1a1a1a 2px, transparent 2px);
+            background-size: 30px 30px;
+        }
+
+        /* 呼吸律动 */
+        @keyframes rhythm {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.02); opacity: 1; }
+        }
+        .beat-150 { animation: rhythm 0.4s infinite; } /* 150 BPM */
+
+        /* 文本弹跳特效 */
+        @keyframes bounceIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        .text-bounce {
+            animation: bounceIn 0.6s ease-out forwards;
+        }
+
+        /* 篮球粒子动画 */
+        .basketball-particle {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="orange"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><path d="M11 6h2v12h-2zm-5 4h12v2H6zm0 4h12v2H6z"/></svg>'); /* Simple basketball SVG */
+            background-size: cover;
+            opacity: 0;
+            animation: floatAndFade 15s infinite ease-out;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes floatAndFade {
+            0% {
+                transform: translate(var(--start-x), var(--start-y)) scale(0.5);
+                opacity: 0;
+            }
+            10% { opacity: 0.5; }
+            90% { opacity: 0.5; }
+            100% {
+                transform: translate(var(--end-x), var(--end-y)) scale(1.2);
+                opacity: 0;
+            }
+        }
+
+        /* 隐藏滚动条 */
+        ::-webkit-scrollbar { width: 0px; }
+    </style>
+</head>
+<body class="bg-pattern text-gray-200 min-h-screen flex flex-col items-center py-10 px-4">
+
+    <div id="particle-container" class="absolute inset-0 overflow-hidden"></div>
+
+    <div class="text-center mb-10 z-10">
+        <h1 class="text-4xl md:text-6xl font-black text-white tracking-[0.2em] mb-4">
+            IKUN <span class="text-yellow-500">CHRONO</span>
+        </h1>
+        <div class="inline-block px-4 py-1 bg-yellow-500 text-black text-xs font-bold rounded-full">
+            1 坤时 ≡ 2.5 标准时
+        </div>
+    </div>
+
+    <div class="w-full max-w-xl space-y-6 z-10">
+        
+        <div class="bg-zinc-900/80 border border-zinc-800 p-8 rounded-[2rem] glow text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-yellow-500/50"></div>
+            <h2 class="text-gray-500 text-sm tracking-widest mb-2 uppercase">Current Kun Time (KST)</h2>
+            <div id="kun-clock" class="digital-font text-6xl md:text-7xl font-bold text-yellow-500 drop-shadow-lg">
+                00:00:00
+            </div>
+            <div class="mt-4 text-zinc-500 text-xs">
+                标准时间：<span id="std-clock-text">00:00:00</span>
+            </div>
+        </div>
+
+        <div class="bg-zinc-900/80 border border-zinc-800 p-8 rounded-[2rem] space-y-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div class="space-y-2">
+                    <label class="text-xs text-yellow-500/70 font-bold ml-1">标准小时 (Hours)</label>
+                    <input type="number" id="input-std" placeholder="例如: 2.5" 
+                        class="w-full bg-black border-b-2 border-zinc-700 focus:border-yellow-500 p-4 text-2xl digital-font outline-none transition-all">
+                </div>
+                <div class="space-y-2 text-right">
+                    <label class="text-xs text-zinc-500 font-bold mr-1">对应坤时 (K-HR)</label>
+                    <div id="output-kun" class="text-4xl text-white font-bold digital-font p-3">
+                        0.00
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-4">
+                <div class="flex justify-between text-[10px] mb-2 text-zinc-400">
+                    <span>今日练习时长进度</span>
+                    <span id="progress-val" class="text-yellow-500">0%</span>
+                </div>
+                <div class="h-2 w-full bg-black rounded-full overflow-hidden">
+                    <div id="progress-bar" class="h-full bg-yellow-500 shadow-[0_0_10px_#eab308] transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4">
+            <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl text-center">
+                <div class="text-[10px] text-zinc-500">一坤分</div>
+                <div class="text-lg font-bold">1.5 min</div>
+            </div>
+            <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl text-center border-yellow-500/30">
+                <div class="text-[10px] text-yellow-500">练习时长</div>
+                <div class="text-lg font-bold">8760 坤时</div>
+            </div>
+            <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl text-center">
+                <div class="text-[10px] text-zinc-500">一坤秒</div>
+                <div class="text-lg font-bold">0.9 s</div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-12 text-zinc-600 text-[10px] tracking-widest text-center leading-loose z-10">
+        DATA SYNCED WITH KUN-SATELLITE <br>
+        © 2024-2026 IKUN TIME FOUNDATION. ALL RIGHTS RESERVED.
+    </footer>
+
+    <audio id="jntm-audio" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" preload="auto"></audio> 
+    <script>
+        const inputStd = document.getElementById('input-std');
+        const outputKun = document.getElementById('output-kun');
+        const kunClock = document.getElementById('kun-clock');
+        const stdClockText = document.getElementById('std-clock-text');
+        const progressBar = document.getElementById('progress-bar');
+        const progressVal = document.getElementById('progress-val');
+        const jntmAudio = document.getElementById('jntm-audio');
+        const particleContainer = document.getElementById('particle-container');
+
+        // 1. 实时坤钟逻辑
+        function updateClocks() {
+            const now = new Date();
+            
+            // 标准时间显示
+            stdClockText.innerText = now.toTimeString().split(' ')[0];
+
+            // 坤时计算 (以天为单位循环)
+            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const secondsSinceDayStart = (now - startOfDay) / 1000;
+
+            // 核心换算: 1坤秒 = 0.9标准秒
+            const totalKunSeconds = secondsSinceDayStart / 0.9;
+            const kH = Math.floor(totalKunSeconds / 10000); // 1坤时=100坤分=10000坤秒
+            const kM = Math.floor((totalKunSeconds % 10000) / 100);
+            const kS = Math.floor(totalKunSeconds % 100);
+
+            kunClock.innerText = `${String(kH).padStart(2, '0')}:${String(kM).padStart(2, '0')}:${String(kS).padStart(2, '0')}`;
+
+            // 进度条 (24小时进度)
+            const dayPercent = ((secondsSinceDayStart / 86400) * 100).toFixed(2);
+            progressBar.style.width = dayPercent + '%';
+            progressVal.innerText = dayPercent + '%';
+        }
+
+        // 2. 交互转换逻辑
+        inputStd.addEventListener('input', (e) => {
+            const hours = parseFloat(e.target.value);
+            // 清除之前的动画类
+            outputKun.classList.remove('beat-150', 'text-bounce', 'text-yellow-500');
+
+            if (!isNaN(hours)) {
+                const kunHrs = (hours / 2.5).toFixed(3);
+                outputKun.innerText = kunHrs;
+                
+                // 彩蛋检测 & 动画触发
+                if (hours === 2.5) {
+                    outputKun.classList.add('text-yellow-500', 'beat-150', 'text-bounce');
+                    playJNTMAudio();
+                } else if (hours === 21900) { // 两年半 = 21900 小时
+                    outputKun.classList.add('text-yellow-500', 'text-bounce');
+                    outputKun.innerText = "8760.000 坤时 (两年半)";
+                    playJNTMAudio();
+                } else {
+                    // 默认显示白色
+                    outputKun.classList.add('text-white');
+                }
+            } else {
+                outputKun.innerText = "0.00";
+                outputKun.classList.add('text-white');
+            }
+        });
+
+        // 3. 音频播放函数
+        function playJNTMAudio() {
+            // 确保音频从头开始播放
+            jntmAudio.currentTime = 0; 
+            jntmAudio.play().catch(e => console.log("Audio play failed:", e)); // 捕获自动播放错误
+        }
+
+        // 4. 篮球粒子动画生成
+        function createBasketballParticle() {
+            const particle = document.createElement('div');
+            particle.classList.add('basketball-particle');
+            
+            const startX = Math.random() * window.innerWidth + 'px';
+            const startY = Math.random() * window.innerHeight + 'px';
+            const endX = Math.random() * window.innerWidth + 'px';
+            const endY = Math.random() * window.innerHeight + 'px';
+
+            particle.style.setProperty('--start-x', startX);
+            particle.style.setProperty('--start-y', startY);
+            particle.style.setProperty('--end-x', endX);
+            particle.style.setProperty('--end-y', endY);
+            particle.style.left = startX;
+            particle.style.top = startY;
+            particle.style.animationDelay = Math.random() * 10 + 's'; // 错开动画
+
+            particleContainer.appendChild(particle);
+
+            // 移除旧粒子以避免DOM膨胀
+            setTimeout(() => {
+                particle.remove();
+            }, 15000); 
+        }
+
+        // 每隔一段时间生成一个粒子
+        setInterval(createBasketballParticle, 1000); 
+
+        // 初始化
+        setInterval(updateClocks, 900); // 约等于1坤秒的频率
+        updateClocks();
+    </script>
+</body>
+</html>
