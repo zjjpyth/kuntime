@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>红色颗粒抖动爱心</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="heartCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('heartCanvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = 600;
+    canvas.height = 600;
+
+    let particles = [];
+    const particleCount = 2500;
+    const redColor = '#FF0000';
+
+    function getHeartPoint(t) {
+        const x = 16 * Math.pow(Math.sin(t), 3);
+        const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+        return { x, y };
+    }
+
+    function init() {
+        for (let i = 0; i < particleCount; i++) {
+            particles.push({
+                x: canvas.width / 2,
+                y: canvas.height / 2,
+                size: Math.random() * 1.5 + 0.5,
+                opacity: Math.random() * 0.8 + 0.2,
+                speed: Math.random() * 0.05 + 0.01
+            });
+        }
+    }
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        particles.forEach((p, index) => {
+            const t = (index / particleCount) * Math.PI * 2;
+            const targetPoint = getHeartPoint(t);
+            const scale = 15;
+
+            const spread = Math.random() * 25;
+            const targetX = canvas.width / 2 + targetPoint.x * scale + (Math.random() - 0.5) * spread;
+            const targetY = canvas.height / 2 + targetPoint.y * scale + (Math.random() - 0.5) * spread;
+
+            p.x += (targetX - p.x) * p.speed;
+            p.y += (targetY - p.y) * p.speed;
+
+            ctx.fillStyle = redColor;
+            ctx.globalAlpha = p.opacity;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        requestAnimationFrame(animate);
+    }
+
+    init();
+    animate();
+</script>
+
+</body>
+</html>
